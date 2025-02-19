@@ -17,7 +17,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Dependencies
-        run: npm install  # Modify as per your build process
+        run: npm install --force  # Modify as per your build process
 
       - name: Build Project
         run: npm run build  # Modify as per your build process
