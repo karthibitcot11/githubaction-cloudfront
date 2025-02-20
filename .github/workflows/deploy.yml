@@ -12,25 +12,28 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Check & Install AWS CLI (if not installed)
+      - name: Check & Install AWS CLI (if not installed or outdated)
         run: |
-          if ! command -v aws &> /dev/null; then
+          if command -v aws &> /dev/null; then
+            echo "AWS CLI is already installed. Updating..."
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install --update
+          else
             echo "AWS CLI not found, installing..."
             curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
             unzip awscliv2.zip
             sudo ./aws/install
-          else
-            echo "AWS CLI is already installed. Skipping installation."
           fi
           aws --version
 
       - name: Set Up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18  # Adjust for your project
+          node-version: 18
 
       - name: Install Dependencies
-        run: npm install --force # Adjust for your project
+        run: npm install --force
 
       - name: Build the Application
         run: |
