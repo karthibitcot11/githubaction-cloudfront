@@ -1,7 +1,8 @@
 name: PR Preview Deployment
 
 on:
-  pull_request:
+  # pull_request:
+  push:
     branches:
       - master
 
