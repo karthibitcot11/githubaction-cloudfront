@@ -1,49 +1,73 @@
-name: Deploy to S3 & CloudFront (Unique Preview)
+name: PR Preview Deployment
 
 on:
   pull_request:
-    types:
-      - closed
+    branches:
+      - master
 
 jobs:
-  deploy:
-    if: github.event.pull_request.merged == true
+  deploy-preview:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
+      - name: Install AWS CLI
+        uses: aws-actions/setup-aws-cli@v2
+
+      - name: Set Up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18  # Adjust for your project
+
       - name: Install Dependencies
+        run: npm install --force # Adjust for your project
+
+      - name: Build the Application
         run: |
-          npm install  # Adjust based on your project
+          npm run build || { echo "Build failed!"; exit 1; }
 
-      - name: Build Project
+      - name: Debug - Check if build folder exists
         run: |
-          npm run build  # Adjust based on your project
+          if [ ! -d "./build" ]; then
+            echo "Error: build folder is missing!"
+            exit 1
+          fi
+          ls -l ./build
 
-      - name: Generate Unique Deployment ID
-        run: echo "DEPLOY_ID=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
-
-      - name: Deploy to S3 (Versioned Path)
+      - name: Set Environment Variables
         run: |
-          aws s3 sync ./dist s3://$S3_BUCKET/previews/$DEPLOY_ID/ --delete
+          echo "BUCKET_NAME=${{ secrets.AWS_S3_BUCKET }}" >> $GITHUB_ENV
+          echo "PR_PATH=previews/pr-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "DEPLOY_URL=https://preview.example.com/pr-${{ github.event.pull_request.number }}/index.html" >> $GITHUB_ENV
 
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: "us-east-1"
-          S3_BUCKET: "your-s3-bucket-name"
+      - name: Upload Build to S3 Subfolder
+        run: aws s3 sync ./build s3://$BUCKET_NAME/$PR_PATH --delete
 
       - name: Invalidate CloudFront Cache
         run: |
-          aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/previews/$DEPLOY_ID/*"
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/previews/pr-${{ github.event.pull_request.number }}/*"
 
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          DISTRIBUTION_ID: "your-cloudfront-distribution-id"
+      - name: Post Preview URL as PR Comment
+        uses: mshick/add-pr-comment@v2
+        with:
+          message: "🚀 **Preview Deployed:** [${{ env.DEPLOY_URL }}](${{ env.DEPLOY_URL }})"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Output Preview URL
+  cleanup:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true || github.event.action == 'closed'
+
+    steps:
+      - name: Set Cleanup Variables
         run: |
-          echo "Preview URL: https://your-cloudfront-domain.com/previews/$DEPLOY_ID/index.html"
+          echo "BUCKET_NAME=${{ secrets.AWS_S3_BUCKET }}" >> $GITHUB_ENV
+          echo "PR_PATH=previews/pr-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+
+      - name: Delete PR Deployment Files from S3
+        run: aws s3 rm s3://$BUCKET_NAME/$PR_PATH --recursive
+
+      - name: Invalidate CloudFront Cache
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/previews/pr-${{ github.event.pull_request.number }}/*"
