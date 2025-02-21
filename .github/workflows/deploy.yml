@@ -62,7 +62,7 @@ jobs:
         uses: mshick/add-pr-comment@v2
         with:
           message: "🚀 **Preview Deployed:** [${{ env.DEPLOY_URL }}](${{ env.DEPLOY_URL }})"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          repo-token: ${{ secrets.GH_TOKEN }}
 
   cleanup:
     runs-on: ubuntu-latest
