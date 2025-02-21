@@ -45,22 +45,18 @@ jobs:
           fi
           ls -l ./build
 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
       - name: Set Environment Variables
         run: |
           echo "BUCKET_NAME=${{ secrets.AWS_S3_BUCKET }}" >> $GITHUB_ENV
           echo "PR_PATH=previews/pr-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
           echo "DEPLOY_URL=https://${{ secrets.CLOUDFRONT_DOMAIN_NAME }}/previews/pr-${{ github.event.pull_request.number }}/index.html" >> $GITHUB_ENV
-
-      - name: Configure AWS Credentials
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-        run: |
-          aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-          aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-          aws configure set region $AWS_REGION
-          aws sts get-caller-identity
 
       - name: Upload Build to S3 Subfolder
         run: aws s3 sync ./build s3://$BUCKET_NAME/$PR_PATH --delete
@@ -80,6 +76,13 @@ jobs:
     if: github.event.pull_request.merged == true || github.event.action == 'closed'
 
     steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
       - name: Set Cleanup Variables
         run: |
           echo "BUCKET_NAME=${{ secrets.AWS_S3_BUCKET }}" >> $GITHUB_ENV
