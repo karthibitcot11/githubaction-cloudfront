@@ -28,10 +28,10 @@ jobs:
       - name: Set Up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18  # Adjust for your project
+          node-version: 18
 
       - name: Install Dependencies
-        run: npm install --force # Adjust for your project
+        run: npm install --force
 
       - name: Build the Application
         run: |
@@ -88,9 +88,6 @@ jobs:
           echo "BUCKET_NAME=${{ secrets.AWS_S3_BUCKET }}" >> $GITHUB_ENV
           echo "PR_PATH=previews/pr-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
 
-      - name: Delete PR Deployment Files from S3
-        run: aws s3 rm s3://$BUCKET_NAME/$PR_PATH --recursive
-
-      - name: Invalidate CloudFront Cache
+      - name: Invalidate CloudFront Cache (Ensure Latest Version Loads)
         run: |
           aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/previews/pr-${{ github.event.pull_request.number }}/*"
