@@ -16,7 +16,7 @@ export default function Main() {
   // eslint-disable-next-line
   const [currentTheme, setCurrentTheme] = useState(initialTheme);
 
-  console.log('this is a tes');
+  console.log('this is a test');
   
   return (
     <ChakraProvider theme={currentTheme}>
